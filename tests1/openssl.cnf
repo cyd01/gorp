@@ -1,0 +1,12 @@
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+database        = index.txt
+crlnumber       = crlnumber
+default_crl_days = 30
+default_md      = sha256
+crl_extensions  = crl_ext
+
+[ crl_ext ]
+authorityKeyIdentifier = keyid:always
