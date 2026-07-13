@@ -1,0 +1,7 @@
+listeners:
+  - name: tcp_ssh
+    type: tcp
+    address: ":9443"
+    backends:
+      - name: simple_backend1
+        url: "tcp://127.0.0.1:2022"

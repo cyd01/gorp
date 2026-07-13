@@ -1,0 +1,7 @@
+routes:
+  - name: simple
+    prefix: "/"
+    backends:
+      - name: simple_backend1
+        url: "http://127.0.0.1:8001"
+
