@@ -1,0 +1,27 @@
+admin:
+  enabled: true
+  address: ":9090"
+  # /health, /ready, /config, /stop admin endpoints
+
+directory: .
+
+listeners:
+  - name: s3
+    type: http
+    address: ":8080"
+    middlewares:
+      - name: logging
+
+routes:
+  - name: s3
+    prefix: "/"
+    preserve_host: false
+    backends:
+      - name: s3
+        url: http://127.0.0.1:8888
+        auth:
+          type: aws
+          access_key_id: ACCESS_KEY_ID
+          secret_access_key: SECRET_ACCESS_KEY
+          region: eu-west-3
+          service: s3

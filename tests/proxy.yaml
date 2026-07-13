@@ -1,0 +1,18 @@
+admin:
+  enabled: true
+  address: ":9090"
+  # /health, /ready, /config, /stop admin endpoints
+
+directory: .
+
+listeners:
+  - name: proxy
+    type: proxy
+    address: ":3128"
+    log: true
+    proxy:
+      url: "http://proxy.piratemind.com:8080"
+      username: cyrtex 
+      password: altar910
+      hosts:
+        - "*.piratemind.com"
