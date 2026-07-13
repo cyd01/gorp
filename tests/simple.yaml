@@ -1,0 +1,125 @@
+admin:
+  enabled: true
+  address: ":9090"
+  middlewares:
+  #  - name: basic_auth
+  #    config:
+  #      realm: "Admin"
+  #      users:
+  #        admin: pass
+
+directory: .
+
+listeners:
+  - name: http
+    type: http
+    address: ":8080"
+
+  - name: oidc
+    type: http
+    address: ":8888"
+
+  - name: https
+    type: https
+    address: ":1443"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+
+  - name: http3
+    type: http3
+    address: ":8443"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+
+  - name: multi
+    type: multi
+    address: ":1444"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+
+  - name: dynamic-https
+    type: dynamic
+    address: ":1445"
+    tls:
+      cert_file: ca.crt
+      key_file: ca.key
+      #key_passphrase: "change-me"
+
+  - name: proxy
+    type: proxy
+    address: ":3128"
+
+  - name: tcp
+    type: tcp
+    address: ":9080"
+    backends:
+      - name: simple_backend1
+        url: "tcp://127.0.0.1:8001"
+      - name: simple_backend2
+        url: "tcp://localhost:8002"
+        force_tls: true
+        tls:
+          ca_file: ca.crt
+
+  - name: tcp_with_tls
+    type: tcp
+    address: ":9443"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+    backends:
+      - name: simple_backend1
+        url: "tcp://127.0.0.1:8001"
+    #  - name: simple_backend2
+    #    url: "tcp://localhost:8002"
+    #    force_tls: true
+    #    tls:
+    #      ca_file: ca.crt
+
+routes:
+  - name: simple
+    prefix: "/"
+    #endpoints:
+    #  - oidc
+    service: simple_backend
+    middlewares:
+      - name: logging
+      #- name: dynamic_response
+      #  config:
+      #    code: |
+      #      package dynamic
+      #
+      #      import "net/http"
+      #
+      #      func Middleware(response *http.Response) error {
+      #          response.Header.Set("X-From-Dynamic", "true")
+      #          return nil
+      #      }
+      #- name: auth_openid
+      #  config:
+      #    issuer: "https://openid.piratemind.com"
+      #    audience: id-222222
+      #    algorithm: "RS256"
+      #    keys:
+      #      - |
+      #        -----BEGIN PUBLIC-----
+      #        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4QxNtTaw6UkCU4bJaSwd
+      #        trcU1qAGs28ROIoSqkzsiJaFm7T637n3axJSWxBDCCSdaWvHgdHyng4HCeT8C+pj
+      #        gZL740XyiHOlocsk/23IcYQQnzEbpOX04GYS2Xsv79N7kVxTTk3krI6bYhSrFCT5
+      #        fF54uXfpCLI/cuAUiX7rZg5gGIrq4Z6bC0NkGri5Wnv5xmwplcm7j+g1SAWkFnTp
+      #        aNy9eeozJBCgCzpeJuu3CPCpL3KjbNlJrYgbCjUtRcnmbqKrrkdAh6E9rZcmUkw1
+      #        3UIEQFx0+Fl/F53/grU9k+j9huS7ciKNUX6KaFYnciD1pQIIHFipnLWu5J19ksK2
+      #        VQIDAQAB
+      #        -----END PUBLIC-----
+
+services:
+  - name: simple_backend
+    backends:
+      - name: simple_backend1
+        url: "http://127.0.0.1:8001"
+
+# basicweb -echo -addr :8001
+# basicweb -echo -addr :8002 -tls -tls-key server.key -tls-cert server.crt

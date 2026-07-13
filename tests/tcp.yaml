@@ -1,0 +1,21 @@
+admin:
+  enabled: true
+  address: ":9090"
+
+listeners:
+  # TCP avec TLS
+  - name: tcp_secure
+    type: tcp
+    address: ":9443"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+    backends:
+      - name: backend1
+        url: "localhost:9010"
+        timeout: 30
+        force_tls: true
+        tls:
+          insecure: false
+          ca_file: ca.crt
+          server_name: "localhost"

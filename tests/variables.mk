@@ -1,0 +1,9 @@
+SIZE ?=4096
+CANBDAYS ?=3650
+NBDAYS ?=3650
+C ?=FR
+ST ?=France
+L ?=Paris
+O ?=Orga
+OU ?=Unit
+CACN ?=EasyCA
