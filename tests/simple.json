@@ -1,0 +1,104 @@
+{
+    "admin": {
+        "enabled": true,
+        "address": ":9090",
+        "middlewares": null
+    },
+    "directory": ".",
+    "listeners": [
+        {
+            "name": "http",
+            "type": "http",
+            "address": ":8080"
+        },
+        {
+            "name": "oidc",
+            "type": "http",
+            "address": ":8888"
+        },
+        {
+            "name": "https",
+            "type": "https",
+            "address": ":1443",
+            "tls": {
+                "cert_file": "server.crt",
+                "key_file": "server.key"
+            }
+        },
+        {
+            "name": "http3",
+            "type": "http3",
+            "address": ":8443",
+            "tls": {
+                "cert_file": "server.crt",
+                "key_file": "server.key"
+            }
+        },
+        {
+            "name": "multi",
+            "type": "multi",
+            "address": ":1444",
+            "tls": {
+                "cert_file": "server.crt",
+                "key_file": "server.key"
+            }
+        },
+        {
+            "name": "dynamic-https",
+            "type": "dynamic",
+            "address": ":1445",
+            "tls": {
+                "cert_file": "ca.crt",
+                "key_file": "ca.key"
+            }
+        },
+        {
+            "name": "tcp",
+            "type": "tcp",
+            "address": ":9080",
+            "backends": [
+                {
+                    "name": "simple_backend1",
+                    "url": "tcp://127.0.0.1:8001"
+                },
+                {
+                    "name": "simple_backend2",
+                    "url": "tcp://localhost:8002",
+                    "force_tls": true,
+                    "tls": {
+                        "ca_file": "ca.crt"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "tcp_with_tls",
+            "type": "tcp",
+            "address": ":9443",
+            "tls": {
+                "cert_file": "server.crt",
+                "key_file": "server.key"
+            },
+            "backends": [
+                {
+                    "name": "simple_backend1",
+                    "url": "tcp://127.0.0.1:8001"
+                }
+            ]
+        }
+    ],
+    "routes": [
+        {
+            "name": "simple",
+            "prefix": "/",
+            "backends": [
+                {
+                    "name": "simple_backend1",
+                    "url": "http://127.0.0.1:8001",
+                    "timeout": "3s"
+                }
+            ],
+            "middlewares": null
+        }
+    ]
+}

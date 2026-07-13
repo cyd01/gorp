@@ -1,0 +1,7 @@
+listeners:
+  - name: http
+    type: http
+    address: ":8080"
+    middlewares:
+      - name: correlation_id
+      - name: logging
