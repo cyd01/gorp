@@ -1,0 +1,175 @@
+admin:
+  enabled: true
+  address: ":9090"
+  # /health, /ready, /config, /stop admin endpoints
+
+directory: .
+
+listeners:
+  # Simple HTTP, with log middlewares
+  - name: http
+    type: http
+    address: ":8080"
+    middlewares:
+      - name: correlation_id
+      - name: logging
+
+  # HTTPS with log middlewares
+  - name: https
+    type: https
+    address: ":1443"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+    middlewares:
+      - name: correlation_id
+      - name: logging
+
+  # HTTPS with mTLS (client authentication) and revokation list (CRL)
+  - name: https_with_mtls
+    type: https
+    address: ":1444"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+      ca_file: ca.crt
+      crl_file: ca.crl
+
+  # HTTP3
+  - name: http3
+    type: http3
+    address: ":8443"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+    middlewares:
+      - name: basic_auth
+        config:
+          realm: "Restricted"
+          users:
+            alice: secret
+            bob: password
+      #- name: token_auth
+      #  config:
+      #    realm: "API"
+      #    tokens:
+      #      - "token1"
+      #      - "token2"
+      #- name: digest_auth
+      #  config:
+      #    realm: "Digest"
+      #    nonce_timeout: 5m
+      #    users:
+      #      alice: secret123
+
+  # TCP sans TLS
+  - name: tcp_plain
+    type: tcp
+    address: ":9000"
+    backends:
+      - name: backend1
+        url: "localhost:8080"
+        timeout: 30
+
+  # TCP avec TLS
+  - name: tcp_secure
+    type: tcp
+    address: ":9443"
+    tls:
+      cert_file: server.crt
+      key_file: server.key
+    backends:
+      - name: backend1
+        url: "localhost:9001"
+        timeout: 30
+
+routes:
+  - name: echo
+    prefix: "/echo"
+    strip_prefix: true
+    # Selector à appliquer
+    selector:
+      type: RoundRobin
+    # Middleware à appliquer
+    middlewares:
+      - name: delay
+        config:
+          duration: 1000ms
+    backends:
+      - name: echo_backend
+        url: "http://localhost:8080"
+        timeout: 10
+
+  - name: echo_backend_basic
+    prefix: "/backend-basic"
+    strip_prefix: true
+    backends:
+      - name: basic_backend
+        url: "http://localhost:8080"
+        timeout: 10
+        auth:
+          type: basic
+          username: "alice"
+          password: "secret"
+
+  - name: echo_backend_token
+    prefix: "/backend-token"
+    strip_prefix: true
+    backends:
+      - name: token_backend
+        url: "http://localhost:8080"
+        timeout: 10
+        auth:
+          type: token
+          token: "token1"
+          header: "Authorization"
+          prefix: "Bearer "
+
+  - name: echo_with_proxy
+    prefix: "/echoproxy"
+    strip_prefix: true
+    backends:
+      - name: proxied_backend
+        url: "https://localhost:8080"
+        timeout: 10
+        # proxy:
+        #   url: "http://127.0.0.1:3128"
+        #   username: "user"
+        #   password: "secret"
+
+  - name: echo_with_tls
+    prefix: "/echotls"
+    strip_prefix: true
+    backends:
+      - name: echotls_backend
+        url: "https://localhost:1443"
+        timeout: 10
+
+  - name: echo_openid
+    prefix: "/openid"
+    strip_prefix: true
+    middlewares:
+      - name: auth_openid
+        config:
+          issuer: "https://issuer.example.com"
+          audience: "api://default"
+          algorithm: "RS256"
+          keys:
+            - |
+              -----BEGIN PUBLIC KEY-----
+              MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw5h5aB3V6i9E1V3cE4jw
+              6p2vXcEuiiIYVJGk0yF4kAszWzAGJ51Xb3J9juA8kG2Xz0usIX8eR6pJzjB2O9jX
+              1bTnALQMzF7bFqd6+BBY1N6XTC/jN8wWUi9cDEO3qw5xgkxYpC5qUe6ld2zH9nVP
+              E5Aa1Ml+o2JxHhHvv6lR8/H2Zx7+ZNZ6Hc6fFBU2lH2xkQvGrZmtm6kxxeK2vC5t
+              Z6S1FZqnC3CnCu7n/s7zK8g5OXGxNxxRI/8YFYLpTv4pK1u1qKo5hqRdB6q9hH4Y
+              xlHpI6dAUvUpFJR4d2jA7Z4HUyxNTRnP7/4zgP3yD2HZJ8c8M2+xG+qIkCUVvUSt
+              UwIDAQAB
+              -----END PUBLIC KEY-----
+    backends:
+      - name: echo_backend
+        url: "https://localhost:8080"
+        timeout: 10
+        tls:
+          insecure: false
+          ca_file: ca.crt
+          server_name: "localhost"

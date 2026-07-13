@@ -1,0 +1,20 @@
+admin:
+  enabled: true
+  address: ":9090"
+
+listeners:
+  - name: proxy
+    type: http
+    address: ":8080"
+
+routes:
+  - name: gallery
+    prefix: "/"
+    backends:
+      - name: gallery1
+        url: http://ken.9bis.com:8686
+    middlewares:
+      - name: add_request_headers
+        config:
+          headers:
+            Authorization: Basic Y3lydGV4OmFsdGFyOTEw
