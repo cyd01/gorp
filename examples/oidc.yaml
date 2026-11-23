@@ -1,0 +1,56 @@
+admin:
+  enabled: true
+  address: ":9090"
+  
+listeners:
+  - name: public-https
+    type: https
+    address: ":8080"
+    tls:
+      cert_file: "/home/public/gallery/cert.pem"
+      key_file: "/home/public/gallery/key.pem"
+    middlewares:
+      - name: logging
+
+services:
+  - name: application
+    backends:
+      - name: local-app
+        url: "http://ken.9bis.com:8686"
+        auth:
+          type: basic
+          username: cyrtex
+          password: ${PASSWORD}
+
+routes:
+  - name: public-app
+    prefix: "/"
+    service: application
+  - name: oidc-callback
+    prefix: "/oidc/callback"
+    service: application
+    middlewares:
+      - name: auth_openid
+        config:
+          issuer: "https://openid.piratemind.com"
+          algorithm: "RS256"
+          client_id: "id-222222"
+          client_secret: "secret-222222"
+          redirect_uri: "https://ken.9bis.com:8080/oidc/callback"
+          callback_path: "/oidc/callback"
+          cookie_name: "gorp_oidc_session"
+          # audience: "AUDIENCE_REELLE_DES_TOKENS_API"
+  - name: protected-app
+    prefix: "/X"
+    service: application
+    middlewares:
+      - name: auth_openid
+        config:
+          issuer: "https://openid.piratemind.com"
+          algorithm: "RS256"
+          client_id: "id-222222"
+          client_secret: "secret-222222"
+          redirect_uri: "https://ken.9bis.com:8080/oidc/callback"
+          callback_path: "/oidc/callback"
+          cookie_name: "gorp_oidc_session"
+          # audience: "AUDIENCE_REELLE_DES_TOKENS_API"

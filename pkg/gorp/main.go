@@ -1,0 +1,143 @@
+package gorp
+
+import (
+	"context"
+	"flag"
+	"log"
+	"os"
+	"time"
+
+	"github.com/cyd01/gorp/pkg/config"
+	"github.com/cyd01/gorp/pkg/server"
+)
+
+func Main() {
+	resetApplicationFlags()
+	configFile := flag.String("config", initFromEnv("", "CONFIG", "GORP_CONFIG", "PROXY_CONFIG"), "configuration file")
+	configDir := flag.String("config-dir", initFromEnv("", "GORP_CONFIG_DIR", "PROXY_CONFIG_DIR"), "directory containing YAML configuration fragments")
+	configExpand := flag.Bool("config-expand", false, "expand environment variables in configuration")
+
+	flag.Parse()
+
+	if *configFile == "" && *configDir == "" {
+		if existsfile("/etc/gorp/config.yaml") {
+			*configFile = "/etc/gorp/config.yaml"
+		} else if existsfile("~/.gorprc") {
+			*configFile = "~/.gorprc"
+		} else if existsfile("./gorprc") {
+			*configFile = "./gorprc"
+		} else {
+			log.Fatal("missing -config or -config-dir flag")
+		}
+	}
+	if *configFile != "" && *configDir != "" {
+		log.Fatal("use either -config or -config-dir, not both")
+	}
+	if *configDir != "" {
+		StartDir(*configDir, *configExpand)
+		return
+	}
+	Start(*configFile, *configExpand)
+}
+
+func resetApplicationFlags() {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+}
+
+func Start(configFile string, expand bool) {
+	cfg, err := config.Load(configFile, expand)
+	if err != nil {
+		log.Fatal(err)
+	}
+	startWithConfig(configFile, expand, cfg)
+}
+
+func StartDir(configDir string, expand bool) {
+	cfg, err := config.LoadDir(configDir, expand)
+	if err != nil {
+		log.Fatal(err)
+	}
+	startWithConfig(configDir, expand, cfg)
+}
+
+func startWithConfig(configSource string, expand bool, cfg *config.Config) {
+	srv, err := server.Build(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	reload := make(chan struct{}, 1)
+	go config.Watch(configSource, func() {
+		select {
+		case reload <- struct{}{}:
+		default:
+		}
+	})
+
+	runResult := runServer(srv)
+	for {
+		select {
+		case err := <-runResult:
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+
+		case <-reload:
+			log.Println("configuration reloading")
+			var cfg2 *config.Config
+			if info, err := os.Stat(configSource); err == nil && info.IsDir() {
+				cfg2, err = config.LoadDir(configSource, expand)
+			} else {
+				cfg2, err = config.Load(configSource, expand)
+			}
+			if err != nil {
+				log.Printf("failed to reload configuration: %v\n", err)
+				continue
+			}
+			next, err := server.Build(cfg2)
+			if err != nil {
+				log.Printf("failed to build reloaded configuration: %v\n", err)
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			srv.Shutdown(ctx)
+			cancel()
+			if err := <-runResult; err != nil {
+				log.Printf("server shutdown during reload: %v\n", err)
+			}
+			cfg = cfg2
+			srv = next
+			runResult = runServer(srv)
+		}
+	}
+}
+
+func runServer(srv *server.Server) chan error {
+	result := make(chan error, 1)
+	go func() {
+		result <- srv.Run()
+	}()
+	return result
+}
+
+func initFromEnv(def string, args ...string) string {
+	for _, v := range args {
+		if len(os.Getenv(v)) > 0 {
+			return os.Getenv(v)
+		}
+	}
+	return def
+}
+
+func existsfile(path string) bool {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	if !fi.Mode().IsRegular() {
+		return false
+	}
+	return true
+}

@@ -1,0 +1,79 @@
+admin:
+  enabled: true
+  address: ":9090"
+  
+listeners:
+  - name: public-https
+    type: https
+    address: ":8080"
+    tls:
+      cert_file: "/home/public/gallery/cert.pem"
+      key_file: "/home/public/gallery/key.pem"
+    middlewares:
+      - name: logging
+
+  - name: test-mocksrv
+    type: mocksrv
+    address: ":8001"
+    mocksrv:
+      routes:
+        private:
+          match:
+            method: GET
+            path: /X/**
+          default:
+            status: 200
+            headers:
+              Content-Type: text/plain
+            body: private part
+        public:
+          match:
+            method: GET
+          default:
+            status: 200
+            headers:
+              Content-Type: text/plain
+            body: public part
+
+services:
+  - name: application
+    backends:
+      - name: local-app
+        url: "http://127.0.0.1:8001"
+        auth:
+          type: basic
+          username: cyrtex
+          password: ${PASSWORD}
+
+routes:
+  - name: public-app
+    prefix: "/"
+    service: application
+  - name: oidc-callback
+    prefix: "/oidc/callback"
+    service: application
+    middlewares:
+      - name: auth_openid
+        config:
+          issuer: "https://openid.piratemind.com"
+          algorithm: "RS256"
+          client_id: "id-222222"
+          client_secret: "secret-222222"
+          redirect_uri: "https://ken.9bis.com:8080/oidc/callback"
+          callback_path: "/oidc/callback"
+          cookie_name: "gorp_oidc_session"
+          # audience: "AUDIENCE_REELLE_DES_TOKENS_API"
+  - name: protected-app
+    prefix: "/X"
+    service: application
+    middlewares:
+      - name: auth_openid
+        config:
+          issuer: "https://openid.piratemind.com"
+          algorithm: "RS256"
+          client_id: "id-222222"
+          client_secret: "secret-222222"
+          redirect_uri: "https://ken.9bis.com:8080/oidc/callback"
+          callback_path: "/oidc/callback"
+          cookie_name: "gorp_oidc_session"
+          # audience: "AUDIENCE_REELLE_DES_TOKENS_API"

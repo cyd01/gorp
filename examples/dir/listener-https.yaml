@@ -1,0 +1,10 @@
+listeners:
+  - name: https
+    type: https
+    address: ":1443"
+    tls:
+      cert_file: ./tests/dir/server.crt
+      key_file: ./tests/dir/server.key
+    middlewares:
+      - name: correlation_id
+      - name: logging
